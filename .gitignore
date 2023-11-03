@@ -1,0 +1,7 @@
+/target
+*.epub
+
+.env
+init.sql
+/.vscode
+docker-compose.yml
