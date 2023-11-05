@@ -2,8 +2,11 @@
 mod tests {
     const PATH: &str = "The_Artists_Way_Julia_Cameron.epub";
     use epub::doc::*;
-    use std::{fs::File, io::{Read, BufReader}, fmt::Write};
-    
+    use std::{
+        fmt::Write,
+        fs::File,
+        io::{BufReader, Read},
+    };
 
     #[test]
     fn read_book_name() {
@@ -12,10 +15,10 @@ mod tests {
         println!("{:#?}", doc_subjects)
     }
 
-    fn parse_tags(book: &EpubDoc<BufReader<File>>, tag:&str) -> Option<Vec<String>> { 
+    fn parse_tags(book: &EpubDoc<BufReader<File>>, tag: &str) -> Option<Vec<String>> {
         book.metadata.get(tag).cloned()
     }
-    
+
     #[test]
     fn test_it_all() {
         let book = EpubDoc::new(PATH).unwrap();
@@ -23,7 +26,14 @@ mod tests {
         println!("{:#?}", thingy);
     }
 
-    
+    #[actix_rt::test]
+    async fn db_book() {
+        // NOTE: This is a test of db (not saving)
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let pool = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect to db");
+    }
 
     // fn get_xml_attr(xml: &str, tag: &[u8]) -> Option<Vec<String>> {
     //     let mut reader = Reader::from_str(xml);
@@ -72,7 +82,6 @@ mod tests {
     //     return None;
     // }
 }
-
 
 /*
     langauge

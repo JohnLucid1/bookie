@@ -1,3 +1,6 @@
+use std::{fs, path::PathBuf};
+
+use sqlx::{Pool, Postgres};
 use teloxide::{requests::Requester, types::Message, Bot};
 
 use crate::{HandlerResult, MyDialogue};
@@ -48,9 +51,19 @@ impl State {
     }
 
     pub async fn receive_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+        let books_path = "./books/";
+
         match msg.document() {
             Some(doc) => {
-                let document_name = doc.file_name.clone().unwrap_or("None".into());
+                // match doc.file.clone() {
+                //     Some(name) => {
+                //         let mut path_buf = PathBuf::from(books_path);
+                        
+                //     },
+                //     None => todo!(),
+                // }
+
+                let document_name = doc.file_name.clone().unwrap();
                 bot.send_message(msg.chat.id, format!("Book name: {}", document_name))
                     .await?;
                 dialogue.exit().await?

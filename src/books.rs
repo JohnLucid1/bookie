@@ -1,46 +1,30 @@
-use std::{path::Path, io::BufReader, fs::File};
+use std::{fs::File, io::BufReader, path::Path, error::Error};
+#[allow(dead_code)]
 
-use epub::doc::{EpubDoc, DocError};
+use epub::doc::{DocError, EpubDoc};
+use sqlx::{Pool, Postgres};
+
+use crate::db::create_book;
 
 pub struct Book {
-    title: String,
-    author: String,
-    book_path: String,
-    description: String,
-    download_count: u32,
-    file_size: u32,
-    language: String,
-    genres: Vec<String>,
-    format: String,
+    pub title: String,
+    pub author: String,
+    pub book_path: String,
+    pub description: String,
+    pub download_count: u32,
+    pub file_size: u64,
+    pub language: String,
+    pub genres: Vec<String>,
+    pub format: String,
 }
 
-/*
-    NOTE: all the metadata of books is stored in .opf file
 
-    NOTE: How does the new function should work
-        _it should receive a valid path:
-        _it should get the filetype and\n
-        depending on the filetype do all the parsing
-
-
-    workflow
-    1. Admin sends a book:
-        book is saved in temp folder
-        parse all the data from the book
-        if no error than save and send success message
-        else send error
-*/
-
-impl Book {
-    fn new(temp_filepath: &Path) {
-        if let Some(ext) = FileType::get_extension(temp_filepath) {
-            match ext {
-                FileType::EPUB => FileType::parse_epub(temp_filepath),
-                FileType::FB2 => FileType::parse_fb2(temp_filepath),
-            }
-        }
-    }
+struct Config {
+    db_url: String, 
+    pool: Pool<Postgres>
 }
+
+const FOLDER_PATH: &str = "./books";
 
 pub enum FileType {
     EPUB,
@@ -48,12 +32,23 @@ pub enum FileType {
 }
 
 impl FileType {
-    fn get_extension(path: &Path) -> Option<FileType> {
+    async fn parse(path: &Path) -> Option<Book> {
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let pool = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect to db");
+        
         if let Some(os_exstension) = path.extension() {
             let extension = os_exstension.to_str().unwrap_or("");
             match extension {
-                "epub" => Some(FileType::EPUB),
-                "fb2" => Some(FileType::FB2),
+                "epub" => {
+                    todo!()
+                }, 
+
+                "fb2" => {
+                    todo!()
+                },
+
                 _ => None,
             }
         } else {
@@ -61,57 +56,42 @@ impl FileType {
         }
     }
 
-    fn parse_tag(book: &EpubDoc<BufReader<File>>, tag:&str) -> Option<String> {
+    fn parse_tag(book: &EpubDoc<BufReader<File>>, tag: &str) -> Option<String> {
         book.mdata(tag)
     }
-    
-    fn parse_tags(book: &EpubDoc<BufReader<File>>, tag:&str) -> Option<Vec<String>> { 
+
+    fn parse_tags(book: &EpubDoc<BufReader<File>>, tag: &str) -> Option<Vec<String>> {
         book.metadata.get(tag).cloned()
     }
 
-    // NOTE: only done on adding a book to db
-    // NOTE: this function should return a book and another function in db module should save it
-    // TODO: get epub 
-    pub fn save_epub(temp_path: &Path) -> Result<Book, DocError > {
-        let doc = EpubDoc::new(temp_path).expect("Couldn't get temporary book");
-        let title = FileType::parse_tag(&doc, "title");
+    pub fn parse_epub(temp_path: &Path) -> Result<Book, DocError> {
+        let doc = EpubDoc::new(temp_path)?;
+        let title = FileType::parse_tag(&doc, "title").unwrap(); 
         let author = FileType::parse_tag(&doc, "creator").unwrap_or("".into());
         let description = FileType::parse_tag(&doc, "description").unwrap_or("".into());
-        let filesize = File::open(&temp_path).unwrap().metadata().unwrap().len(); // TODO: either this or get from tg message data
+        let file_size = File::open(&temp_path).unwrap().metadata().unwrap().len(); // TODO: either this or get from tg message data
         let language = FileType::parse_tag(&doc, "language").unwrap_or("".into());
-        let gunres = FileType::parse_tags(&doc, "subject").unwrap_or(Vec::new());
+        let genres = FileType::parse_tags(&doc, "subject").unwrap_or(Vec::new());
+        let book_path = temp_path.to_string_lossy().into();
+        let format = ".epub".into();
 
-        Ok(Book {
-            title, 
+        let new_book = Book {
+            title,
             author,
-            book_path: 
-              
-        })
+            book_path,
+            description,
+            download_count: 0,
+            file_size,
+            language,
+            genres,
+            format,
+        };
+        
+        Ok(new_book)
     }
-
-    
-    
-    
     
 
-
-    fn parse_fb2(path: &Path) {
+    fn save_fb2(path: &Path) -> Result<Book, DocError> {
         todo!();
     }
 }
-
-// creator, author,
-// impl Parse for FileType {
-//     fn parse(doc_path: String) -> Option<Book> {
-//         // TODO: from path get extension and then parse accrodingly
-//         // let path = Path::new(doc_path).extension();
-//         if let Some(extension) = Parse::get_filetype(&doc_path) {
-//             todo!()
-//         }
-
-//     }
-// }
-
-// pub trait Parse {
-//     fn parse(path: String) -> Option<Book>;
-// }
