@@ -17,3 +17,4 @@ dotenv = "0.15.0"
 epub = "2.1.1"
 actix-rt = "2.9.0" #To test async functions, maybe remove later
 lazy_static = "1.4.0"
+futures = "0.3.29"

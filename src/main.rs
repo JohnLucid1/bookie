@@ -28,12 +28,8 @@ async fn main() {
     dotenv().ok();
     log::info!("Starting bot :)");
     let bot_token = std::env::var("TELOXIDE_TOKEN").expect("Couldn't get token from .env file");
-    // let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
-    // let pool = sqlx::postgres::PgPool::connect(&db_url)
-    //     .await
-    //     .expect("Couldn't connect to db");
-
     let bot = Bot::new(bot_token);
+
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
         .enable_ctrlc_handler()
@@ -57,7 +53,6 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
     let message_handler = Update::filter_message()
         .branch(command_handler) // This acts upon the state
         .branch(case![State::SearchBook].endpoint(State::searching_book))
-        .branch(case![State::ReceiveBook].endpoint(State::receive_book))
         .branch(case![State::UploadBook].endpoint(State::upload_book))
         .branch(dptree::endpoint(invalid_state));
 

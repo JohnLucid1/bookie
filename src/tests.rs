@@ -1,38 +1,16 @@
 #[cfg(test)]
 mod tests {
-    const PATH: &str = "The_Artists_Way_Julia_Cameron.epub";
-    use epub::doc::*;
-    use std::{
-        fmt::Write,
-        fs::File,
-        io::{BufReader, Read},
-    };
+    // TODO: rewrite test so they will use eq!
+    const PATH: &str = "./books/The_Artists_Way_Julia_Cameron.epub";
+    use std::path::Path;
 
-    #[test]
-    fn read_book_name() {
-        let doc = EpubDoc::new(PATH).unwrap();
-        let doc_subjects = doc.metadata.get("subject").unwrap(); // TODO: if more than one tag use metaadta.get instead of mdata
-        println!("{:#?}", doc_subjects)
-    }
-
-    fn parse_tags(book: &EpubDoc<BufReader<File>>, tag: &str) -> Option<Vec<String>> {
-        book.metadata.get(tag).cloned()
-    }
-
-    #[test]
-    fn test_it_all() {
-        let book = EpubDoc::new(PATH).unwrap();
-        let thingy = parse_tags(&book, "subject");
-        println!("{:#?}", thingy);
-    }
+    use crate::books::FileType;
 
     #[actix_rt::test]
-    async fn db_book() {
-        // NOTE: This is a test of db (not saving)
-        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
-        let pool = sqlx::postgres::PgPool::connect(&db_url)
-            .await
-            .expect("Couldn't connect to db");
+    async fn testing_parse() {
+        let path = Path::new(PATH);
+        let thingy = FileType::parse_epub(path).unwrap();
+        println!("{:#?}", thingy);
     }
 
     // fn get_xml_attr(xml: &str, tag: &[u8]) -> Option<Vec<String>> {

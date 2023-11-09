@@ -1,9 +1,4 @@
-use teloxide::{
-    requests::Requester,
-    types::Message,
-    utils::command::{self, BotCommands},
-    Bot,
-};
+use teloxide::{requests::Requester, types::Message, utils::command::BotCommands, Bot};
 
 use crate::{state::State, HandlerResult, MyDialogue};
 
