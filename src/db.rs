@@ -1,4 +1,6 @@
-use anyhow::{anyhow, Ok};
+use std::result::Result::Ok;
+
+use anyhow::anyhow;
 use futures::TryStreamExt;
 use sqlx::Row;
 
@@ -23,22 +25,17 @@ pub async fn create_book(book: &Book, pool: &sqlx::PgPool) -> anyhow::Result<()>
 
 pub async fn search_book_by_name(name: &str, pool: &sqlx::PgPool) -> anyhow::Result<Vec<Book>> {
     let mut books: Vec<Book> = Vec::with_capacity(5);
-    name.to_owned().push('%');
+    name.to_owned().to_lowercase().push('%');
     let q = "SELECT title, author, book_path, description, download_count, file_size, language, genre FROM books WHERE title ILIKE '%' || $1 || '%' ORDER BY similarity(title, $1) DESC LIMIT 5;";
     let mut rows = sqlx::query(q).bind(name).fetch(pool);
 
     while let Some(row) = rows.try_next().await? {
-        let book = Book {
-            title: row.try_get("title")?,
-            author: row.try_get("author")?,
-            book_path: row.try_get("book_path")?,
-            description: row.try_get("description")?,
-            download_count: row.try_get("download_count")?,
-            file_size: row.try_get("file_size")?,
-            language: row.try_get("language")?,
-            genres: row.try_get("genre")?,
-        };
-        books.push(book)
+        match Book::row_book(row).await {
+            Ok(book) => books.push(book),
+            Err(err) => {
+                log::error!("{:#?}", err)
+            }
+        }
     }
 
     Ok(books)
@@ -50,17 +47,12 @@ pub async fn get_top_five(pool: &sqlx::PgPool) -> anyhow::Result<Vec<Book>> {
     let mut rows = sqlx::query(q).fetch(pool);
 
     while let Some(row) = rows.try_next().await? {
-        let book = Book {
-            title: row.try_get("title")?,
-            author: row.try_get("author")?,
-            book_path: row.try_get("book_path")?,
-            description: row.try_get("description")?,
-            download_count: row.try_get("download_count")?,
-            file_size: row.try_get("file_size")?,
-            language: row.try_get("language")?,
-            genres: row.try_get("genre")?,
-        };
-        books.push(book)
+        match Book::row_book(row).await {
+            Ok(book) => books.push(book),
+            Err(err) => {
+                log::error!("{:#?}", err)
+            }
+        }
     }
 
     Ok(books)
@@ -72,7 +64,7 @@ pub async fn get_path(exact_name: &str, pool: &sqlx::PgPool) -> anyhow::Result<S
     let row = query.fetch_one(pool).await?;
 
     match update_download_count(exact_name, pool).await {
-        std::result::Result::Ok(_) => Ok(row.get("book_path")),
+        Ok(_) => Ok(row.get("book_path")),
         Err(err) => {
             log::error!("{:#?}", err);
             Err(anyhow!("{:#?}", err))
