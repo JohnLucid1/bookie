@@ -1,6 +1,11 @@
-use crate::{books::FileType, db::search_book_by_name, HandlerResult, MyDialogue};
+use crate::{books::FileType, db::{search_book_by_name, get_path}, HandlerResult, MyDialogue};
 use std::{fs, path::PathBuf};
-use teloxide::{net::Download, requests::Requester, types::{Message, InputFile}, Bot};
+use teloxide::{
+    net::Download,
+    requests::Requester,
+    types::{InlineKeyboardButton, InputFile, Message, InlineKeyboardMarkup, CallbackQuery},
+    Bot, payloads::SendMessageSetters,
+};
 use tokio::fs::File;
 
 #[derive(Clone, Default)]
@@ -9,6 +14,8 @@ pub enum State {
     Start,
     UploadBook,
     SearchBook,
+    ReceiveBookChoice
+    ,
 }
 
 const BOOKS_DIR_PATH: &str = "./books/";
@@ -82,15 +89,16 @@ impl State {
 
         match msg.text().map(ToOwned::to_owned) {
             Some(book_name) => {
-                // NOTE: if let cannot capture the error
                 match search_book_by_name(&book_name, &connection).await {
                     Ok(books) => {
-                        // TODO: create input ifle
-                        // let input_file = InputFile::file(path) 
-                        println!("{:#?}", books);
-                        bot.send_message(msg.chat.id, format!("Searched book: {}", book_name))
+                        let books = books.into_iter().map(|book| {
+                            InlineKeyboardButton::callback(book.title.clone(), book.title)
+                        });
+
+                        bot.send_message(msg.chat.id, "Select a book:")
+                            .reply_markup(InlineKeyboardMarkup::new([books]))
                             .await?;
-                        dialogue.update(State::Start).await?;
+                        dialogue.update(State::ReceiveBookChoice).await?;
                     }
                     Err(err) => {
                         log::error!("{:?}", err);
@@ -108,4 +116,30 @@ impl State {
 
         Ok(())
     }
+}
+
+pub async fn receive_book_choice(
+    bot: Bot,
+    dialogue: MyDialogue,
+    q: CallbackQuery,
+) -> HandlerResult {
+    if let Some(exact_name) = &q.data { // NOTE: data that matters
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let connection = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect  to db");
+
+        match get_path(exact_name, &connection).await {
+            Ok(path) => {
+                let input = InputFile::file(path);
+                bot.send_document(dialogue.chat_id(), input).await?;
+                dialogue.exit().await?;
+            },
+            Err(err) =>  {
+                log::error!("{:#?}", err);
+                dialogue.exit().await?;
+            }
+        } 
+    }
+    Ok(())
 }

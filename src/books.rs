@@ -1,7 +1,8 @@
 use anyhow::anyhow;
 use epub::doc::{DocError, EpubDoc};
 use std::{fs::File, io::BufReader, path::Path};
-
+// TODO: implement parse_fb2
+// TODO: Delete filesize (cause telegram shows it on download) 
 use crate::db::create_book;
 
 #[derive(Debug)]
@@ -33,10 +34,6 @@ impl FileType {
                     let new_book = FileType::parse_epub(path).expect("Couldn't parse epub");
                     create_book(&new_book, &connection).await
                 }
-
-                // "fb2" => { // TODO: need to implement
-                //     todo!()
-                // },
                 _ => Err(anyhow::anyhow!("ERRORRRR")),
             }
         } else {
@@ -52,12 +49,14 @@ impl FileType {
         book.metadata.get(tag).cloned()
     }
 
+    
+
     pub fn parse_epub(temp_path: &Path) -> Result<Book, DocError> {
         let doc = EpubDoc::new(temp_path)?;
         let title = FileType::parse_tag(&doc, "title").unwrap();
         let author = FileType::parse_tag(&doc, "creator").unwrap_or("".into());
         let description = FileType::parse_tag(&doc, "description").unwrap_or("".into());
-        let file_size = File::open(temp_path).unwrap().metadata().unwrap().len() as i32; // TODO: either this or get from tg message data
+        let file_size = File::open(temp_path).unwrap().metadata().unwrap().len() as i32; 
         let language = FileType::parse_tag(&doc, "language").unwrap_or("".into());
         let genres = FileType::parse_tags(&doc, "subject").unwrap_or_default();
         let book_path = temp_path.to_string_lossy().into();
@@ -75,5 +74,5 @@ impl FileType {
         Ok(new_book)
     }
 
-    // TODO: implement parse_fb2
+
 }
