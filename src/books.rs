@@ -14,7 +14,6 @@ pub struct Book {
     pub book_path: String,
     pub description: String,
     pub download_count: i32,
-    pub file_size: i32,
     pub language: String,
     pub genres: Vec<String>,
 }
@@ -27,7 +26,6 @@ impl Book {
             book_path: row.try_get("book_path")?,
             description: row.try_get("description")?,
             download_count: row.try_get("download_count")?,
-            file_size: row.try_get("file_size")?,
             language: row.try_get("language")?,
             genres: row.try_get("genre")?,
         };
@@ -35,7 +33,6 @@ impl Book {
         anyhow::Ok(book)
     }
 }
-
 
 pub struct FileType {}
 
@@ -53,7 +50,7 @@ impl FileType {
                     let new_book = FileType::parse_epub(path).expect("Couldn't parse epub");
                     create_book(&new_book, &connection).await
                 }
-                _ => Err(anyhow::anyhow!("ERRORRRR")),
+                _ => Err(anyhow!("ERRORRRR")),
             }
         } else {
             Err(anyhow!("Couln't get file extension"))
@@ -68,13 +65,11 @@ impl FileType {
         book.metadata.get(tag).cloned()
     }
 
-
     pub fn parse_epub(temp_path: &Path) -> Result<Book, DocError> {
         let doc = EpubDoc::new(temp_path)?;
         let title = FileType::parse_tag(&doc, "title").unwrap();
         let author = FileType::parse_tag(&doc, "creator").unwrap_or("".into());
         let description = FileType::parse_tag(&doc, "description").unwrap_or("".into());
-        let file_size = File::open(temp_path).unwrap().metadata().unwrap().len() as i32;
         let language = FileType::parse_tag(&doc, "language").unwrap_or("".into());
         let genres = FileType::parse_tags(&doc, "subject").unwrap_or_default();
         let book_path = temp_path.to_string_lossy().into();
@@ -85,7 +80,6 @@ impl FileType {
             book_path,
             description,
             download_count: 0,
-            file_size,
             language,
             genres,
         };

@@ -3,7 +3,9 @@ mod commands;
 mod db;
 mod state;
 mod tests;
+mod users;
 
+//TODO: write good tests that actually test something
 use commands::Command;
 use dotenv::dotenv;
 use state::State;
@@ -24,6 +26,7 @@ async fn main() {
     log::info!("Starting bot :)");
     let bot_token = std::env::var("TELOXIDE_TOKEN").expect("Couldn't get token from .env file");
     let bot = Bot::new(bot_token);
+    // TODO: test db connection (if db not found panic)
 
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
@@ -39,6 +42,7 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
     let command_handler = teloxide::filter_command::<Command, _>()
         .branch(
             case![State::Start] //NOTE:  This is setting the state
+                .branch(case![Command::Start].endpoint(Command::start)) // TEST:::
                 .branch(case![Command::Help].endpoint(Command::help))
                 .branch(case![Command::SearchBook].endpoint(Command::search_book))
                 .branch(case![Command::UploadBook].endpoint(Command::upload_book))
@@ -52,9 +56,8 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
         .branch(case![State::UploadBook].endpoint(State::upload_book))
         .branch(dptree::endpoint(invalid_state));
 
-    let callback_query_handler = Update::filter_callback_query().branch(
-        case![State::ReceiveBookChoice].endpoint(state::receive_book_choice),
-    );
+    let callback_query_handler = Update::filter_callback_query()
+        .branch(case![State::ReceiveBookChoice].endpoint(state::receive_book_choice));
 
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)

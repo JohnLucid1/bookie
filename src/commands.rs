@@ -15,6 +15,8 @@ use crate::{db::get_top_five, state::State, HandlerResult, MyDialogue};
     description = "These commands are supported:"
 )]
 pub enum Command {
+    #[command(description = "Start the process.")]
+    Start,
     #[command(description = "Display this text.")]
     Help,
     #[command(description = "Cancel any operation.")]
@@ -30,20 +32,45 @@ pub enum Command {
 impl Command {
     pub async fn get_top_five(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
-        let connection = sqlx::postgres::PgPool::connect(&db_url)
-            .await
-            .expect("Couldn't connect  to db");
+        let connection = sqlx::postgres::PgPool::connect(&db_url).await?;
 
-        let top_books = get_top_five(&connection)
-            .await?
-            .into_iter()
-            .map(|book| InlineKeyboardButton::callback(book.title.clone(), book.title));
+        match get_top_five(&connection).await {
+            Ok(books) => {
+                if books.is_empty() {
+                    bot.send_message(msg.chat.id, "No books were found.")
+                        .await?;
+                    dialogue.update(State::Start).await?;
+                } else {
+                    let books = books
+                        .into_iter()
+                        .map(|book| InlineKeyboardButton::callback(book.title.clone(), book.title));
+                    bot.send_message(msg.chat.id, "Select a book:")
+                        .reply_markup(InlineKeyboardMarkup::new([books]))
+                        .await?;
+                    dialogue.update(State::ReceiveBookChoice).await?;
+                }
+            }
+            Err(err) => {
+                log::error!("{:#?}", err);
+                bot.send_message(msg.chat.id, "Server error :(.").await?;
+                dialogue.update(State::Start).await?;
+            }
+        }
+        Ok(())
+    }
 
-        bot.send_message(msg.chat.id, "Select a book:")
-            .reply_markup(InlineKeyboardMarkup::new([top_books]))
-            .await?;
-
-        dialogue.update(State::ReceiveBookChoice).await?;
+    // NOTE: this is a test of flow (command::start -> state::start) and will it work
+    pub async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+        // TODO: write a check_if_user_exists function based on chat.id and if not creates it
+        bot.send_message(
+            msg.chat.id,
+            format!(
+                "Let's start, enter a command\n{}",
+                Command::descriptions().to_string()
+            ),
+        )
+        .await?;
+        dialogue.update(State::Start).await?;
         Ok(())
     }
 

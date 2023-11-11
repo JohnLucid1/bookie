@@ -1,12 +1,18 @@
-use crate::{books::FileType, db::{search_book_by_name, get_path}, HandlerResult, MyDialogue};
+use crate::{
+    books::FileType,
+    db::{get_book_path, search_book_by_name},
+    HandlerResult, MyDialogue,
+};
 use std::{fs, path::PathBuf};
 use teloxide::{
     net::Download,
+    payloads::SendMessageSetters,
     requests::Requester,
-    types::{InlineKeyboardButton, InputFile, Message, InlineKeyboardMarkup, CallbackQuery},
-    Bot, payloads::SendMessageSetters,
+    types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InputFile, Message},
+    Bot,
 };
 use tokio::fs::File;
+// TODO: refactor upload book
 
 #[derive(Clone, Default)]
 pub enum State {
@@ -14,8 +20,7 @@ pub enum State {
     Start,
     UploadBook,
     SearchBook,
-    ReceiveBookChoice
-    ,
+    ReceiveBookChoice,
 }
 
 const BOOKS_DIR_PATH: &str = "./books/";
@@ -82,15 +87,20 @@ impl State {
     }
 
     pub async fn searching_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+        // NOTE: msg.chat.id and dialouge.chat_id() are the same
+
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let connection = sqlx::postgres::PgPool::connect(&db_url)
             .await
             .expect("Couldn't connect  to db");
 
         match msg.text().map(ToOwned::to_owned) {
-            Some(book_name) => {
-                match search_book_by_name(&book_name, &connection).await {
-                    Ok(books) => {
+            Some(book_name) => match search_book_by_name(&book_name, &connection).await {
+                Ok(books) => {
+                    if books.is_empty() {
+                        bot.send_message(msg.chat.id, "No books found :(").await?;
+                        dialogue.update(State::Start).await?;
+                    } else {
                         let books = books.into_iter().map(|book| {
                             InlineKeyboardButton::callback(book.title.clone(), book.title)
                         });
@@ -100,14 +110,13 @@ impl State {
                             .await?;
                         dialogue.update(State::ReceiveBookChoice).await?;
                     }
-                    Err(err) => {
-                        log::error!("{:?}", err);
-                        bot.send_message(msg.chat.id, "Some error with db").await?;
-                        dialogue.update(State::Start).await?;
-                    }
                 }
-            }
-
+                Err(err) => {
+                    log::error!("{:?}", err);
+                    bot.send_message(msg.chat.id, "Some error with db").await?;
+                    dialogue.update(State::Start).await?;
+                }
+            },
             None => {
                 bot.send_message(msg.chat.id, "Action cancelled").await?;
                 dialogue.update(State::Start).await?;
@@ -123,23 +132,23 @@ pub async fn receive_book_choice(
     dialogue: MyDialogue,
     q: CallbackQuery,
 ) -> HandlerResult {
-    if let Some(exact_name) = &q.data { // NOTE: data that matters
+    if let Some(exact_name) = &q.data {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let connection = sqlx::postgres::PgPool::connect(&db_url)
             .await
             .expect("Couldn't connect  to db");
 
-        match get_path(exact_name, &connection).await {
+        match get_book_path(exact_name, &connection).await {
             Ok(path) => {
                 let input = InputFile::file(path);
                 bot.send_document(dialogue.chat_id(), input).await?;
                 dialogue.exit().await?;
-            },
-            Err(err) =>  {
+            }
+            Err(err) => {
                 log::error!("{:#?}", err);
                 dialogue.exit().await?;
             }
-        } 
+        }
     }
     Ok(())
 }
