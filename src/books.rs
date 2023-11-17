@@ -3,10 +3,9 @@ use epub::doc::{DocError, EpubDoc};
 use sqlx::{postgres::PgRow, Row};
 use std::{fs::File, io::BufReader, path::Path};
 // TODO: implement parse_fb2
-// TODO: Delete filesize (cause telegram shows it on download)
 // TODO: Refactor all this sheet
 
-use crate::db::create_book;
+use crate::dbs::db::DB;
 #[derive(Debug)]
 pub struct Book {
     pub title: String,
@@ -37,18 +36,14 @@ impl Book {
 pub struct FileType {}
 
 impl FileType {
-    pub async fn parse(path: &Path) -> anyhow::Result<()> {
-        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
-        let connection = sqlx::postgres::PgPool::connect(&db_url)
-            .await
-            .expect("Couldn't connect  to db");
-
+    pub async fn parse(path: &Path, chat_id: i64) -> anyhow::Result<()> {
         if let Some(os_exstension) = path.extension() {
             let extension = os_exstension.to_str().unwrap_or("");
             match extension {
+                // TODO: change to include the user_id
                 "epub" => {
                     let new_book = FileType::parse_epub(path).expect("Couldn't parse epub");
-                    create_book(&new_book, &connection).await
+                    DB::create_book(&new_book, chat_id).await
                 }
                 _ => Err(anyhow!("ERRORRRR")),
             }

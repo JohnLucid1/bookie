@@ -1,10 +1,11 @@
 mod books;
 mod commands;
-mod db;
+mod dbs;
 mod state;
 mod tests;
 mod users;
 
+// NOTE: app pipeline, comamnd start->create new user->then so on
 //TODO: write good tests that actually test something
 use commands::Command;
 use dotenv::dotenv;
@@ -45,8 +46,8 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
                 .branch(case![Command::Start].endpoint(Command::start)) // TEST:::
                 .branch(case![Command::Help].endpoint(Command::help))
                 .branch(case![Command::SearchBook].endpoint(Command::search_book))
-                .branch(case![Command::UploadBook].endpoint(Command::upload_book))
-                .branch(case![Command::TopFive].endpoint(Command::get_top_five)),
+                .branch(case![Command::UploadBook].endpoint(Command::upload_book)), // .branch(case![Command::TopFive].endpoint(Command::get_top_five)), // TODO: when
+                                                                                    // there's move funcitonality
         )
         .branch(case![Command::Cancel].endpoint(Command::cancel));
 

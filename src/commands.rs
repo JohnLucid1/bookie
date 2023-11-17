@@ -6,7 +6,8 @@ use teloxide::{
     Bot,
 };
 
-use crate::{db::get_top_five, state::State, HandlerResult, MyDialogue};
+use crate::dbs::{db::DB, users::Usr};
+use crate::{state::State, users::User, HandlerResult, MyDialogue};
 
 /// These commands are supported:
 #[derive(BotCommands, Clone)]
@@ -30,11 +31,12 @@ pub enum Command {
 }
 
 impl Command {
+    #[allow(dead_code)]
     pub async fn get_top_five(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let connection = sqlx::postgres::PgPool::connect(&db_url).await?;
 
-        match get_top_five(&connection).await {
+        match DB::get_top_five(&connection).await {
             Ok(books) => {
                 if books.is_empty() {
                     bot.send_message(msg.chat.id, "No books were found.")
@@ -61,21 +63,43 @@ impl Command {
 
     // NOTE: this is a test of flow (command::start -> state::start) and will it work
     pub async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
-        // TODO: write a check_if_user_exists function based on chat.id and if not creates it
-        bot.send_message(
-            msg.chat.id,
-            format!(
-                "Let's start, enter a command\n{}",
-                Command::descriptions().to_string()
-            ),
-        )
-        .await?;
-        dialogue.update(State::Start).await?;
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let connection = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect  to db");
+
+        let new_user = User::new(msg.chat.id.0);
+        match Usr::create_new_user(&connection, &new_user).await {
+            Ok(()) => {
+                bot.send_message(
+                    msg.chat.id,
+                    format!(
+                        "Your account has been created!!!\n{}",
+                        Command::descriptions()
+                    ),
+                )
+                .await?;
+                dialogue.update(State::Start).await?;
+            }
+            Err(err) => {
+                log::error!("{:?}", err);
+                bot.send_message(
+                    msg.chat.id,
+                    "Something went wrong :(\nCancelling the dialogue",
+                )
+                .await?;
+                dialogue.reset().await?;
+            }
+        }
         Ok(())
     }
 
     pub async fn upload_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
-        bot.send_message(msg.chat.id, "Upload a book").await?;
+        bot.send_message(
+            msg.chat.id,
+            "Upload a book.\nUnfortunately only .epub format is supported right now.",
+        )
+        .await?;
         dialogue.update(State::UploadBook).await?;
         Ok(())
     }
