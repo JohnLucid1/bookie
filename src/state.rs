@@ -162,23 +162,20 @@ pub async fn receive_book_delete(
     if let Some(book_path) = &q.data {
         let chat_id = dialogue.chat_id().0;
         match DB::delete_book(book_path, chat_id).await {
-            Ok(()) => {
-                // TODO: handle deleting file
-                match fs::remove_file(&book_path) {
-                    Ok(res) => {
-                        log::info!("Successfully remove file\n {:?}, {}", res, &book_path);
-                        bot.send_message(dialogue.chat_id(), "Successfully removed your book")
-                            .await?;
-                        dialogue.exit().await?;
-                    }
-                    Err(err) => {
-                        log::error!("Error remove book: {},\nERROR:{:?}", book_path, err);
-                        bot.send_message(dialogue.chat_id(), "Error removing file :(")
-                            .await?;
-                        dialogue.exit().await?;
-                    }
+            Ok(()) => match fs::remove_file(book_path) {
+                Ok(res) => {
+                    log::info!("Successfully remove file\n {:?}, {}", res, &book_path);
+                    bot.send_message(dialogue.chat_id(), "Successfully removed your book")
+                        .await?;
+                    dialogue.exit().await?;
                 }
-            }
+                Err(err) => {
+                    log::error!("Error remove book: {},\nERROR:{:?}", book_path, err);
+                    bot.send_message(dialogue.chat_id(), "Error removing file :(")
+                        .await?;
+                    dialogue.exit().await?;
+                }
+            },
             Err(err) => {
                 log::error!("ERROR deleting book from db: {:#?}", err);
                 bot.send_message(dialogue.chat_id(), "ERROR deleting book from db :(")
@@ -186,7 +183,6 @@ pub async fn receive_book_delete(
                 dialogue.update(State::Start).await?;
             }
         }
-        // TODO: write a delete file function
     }
     Ok(())
 }

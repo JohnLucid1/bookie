@@ -1,10 +1,8 @@
 use teloxide::{
-    dispatching::dialogue,
-    dptree::di,
     payloads::SendMessageSetters,
     requests::Requester,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, Message},
-    utils::command::{self, BotCommands},
+    utils::command::BotCommands,
     Bot,
 };
 
@@ -133,7 +131,7 @@ impl Command {
         // TODO: rework so this function gets all books makes keyboard and so on
         // Call callback from here
         // create the keyboard, get result and then delete from db and the file
-        let user_id = msg.chat.id.0.clone();
+        let user_id = msg.chat.id.0;
         let user_books = DB::get_users_books(user_id).await?;
         if user_books.is_empty() {
             bot.send_message(msg.chat.id, "You don't have any books to delete :)")

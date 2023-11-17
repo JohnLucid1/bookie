@@ -2,7 +2,7 @@ use std::result::Result::Ok;
 
 use anyhow::anyhow;
 use futures::TryStreamExt;
-use sqlx::{Row, pool};
+use sqlx::Row;
 
 use crate::books::Book;
 pub struct DB;
@@ -23,7 +23,7 @@ impl DB {
             .bind(&book.description)
             .bind(&book.language)
             .bind(&book.genres)
-            .bind(&chat_id)
+            .bind(chat_id)
             .execute(&pool)
             .await?;
 
@@ -82,23 +82,23 @@ impl DB {
 
         Ok(books)
     }
-    
+
     pub async fn get_users_books(chat_id: i64) -> anyhow::Result<Vec<Book>> {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let pool = sqlx::postgres::PgPool::connect(&db_url)
             .await
             .expect("Couldn't connect  to db");
 
-        let mut books:Vec<Book> = Vec::new();
+        let mut books: Vec<Book> = Vec::new();
         let q = "SELECT title, author, book_path, description,download_count, language, genre, chat_id FROM books WHERE chat_id = $1";
         let mut rows = sqlx::query(q).bind(chat_id).fetch(&pool);
-        while let Some(row)  = rows.try_next().await? {
+        while let Some(row) = rows.try_next().await? {
             match Book::row_book(row).await {
                 Ok(book) => books.push(book),
                 Err(err) => {
                     log::error!("{:?}", err)
                 }
-            }     
+            }
         }
         Ok(books)
     }
@@ -117,7 +117,6 @@ impl DB {
             .await?;
         Ok(())
     }
-    
 
     // TODO: write a function that takes in chat_id and book_title and delete them where they're are the same
     pub async fn get_book_path(exact_name: &str) -> anyhow::Result<String> {

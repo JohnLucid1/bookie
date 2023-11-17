@@ -43,10 +43,10 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
     let command_handler = teloxide::filter_command::<Command, _>()
         .branch(
             case![State::Start] //NOTE:  This is setting the state
-                .branch(case![Command::Start].endpoint(Command::start)) 
+                .branch(case![Command::Start].endpoint(Command::start))
                 .branch(case![Command::Help].endpoint(Command::help))
                 .branch(case![Command::SearchBook].endpoint(Command::search_book))
-                .branch(case![Command::UploadBook].endpoint(Command::upload_book)) 
+                .branch(case![Command::UploadBook].endpoint(Command::upload_book))
                 .branch(case![Command::TopFive].endpoint(Command::get_top_five))
                 .branch(case![Command::DeleteBook].endpoint(Command::delete_book))
                 .branch(case![Command::MyBooks].endpoint(Command::my_books)),

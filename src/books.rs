@@ -15,7 +15,7 @@ pub struct Book {
     pub download_count: i32,
     pub language: String,
     pub genres: Vec<String>,
-    pub chat_id: i32
+    pub chat_id: i32,
 }
 
 impl Book {
