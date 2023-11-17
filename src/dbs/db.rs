@@ -2,10 +2,9 @@ use std::result::Result::Ok;
 
 use anyhow::anyhow;
 use futures::TryStreamExt;
-use sqlx::Row;
+use sqlx::{Row, pool};
 
 use crate::books::Book;
-// TODO: everything should be lowercase
 pub struct DB;
 impl DB {
     pub async fn create_book(book: &Book, chat_id: i64) -> anyhow::Result<()> {
@@ -52,7 +51,7 @@ impl DB {
             .expect("Couldn't connect  to db");
         let mut books: Vec<Book> = Vec::with_capacity(5);
         name.to_owned().to_lowercase().push('%');
-        let q = "SELECT title, author, book_path, description, download_count, language, genre FROM books WHERE title ILIKE '%' || $1 || '%' ORDER BY similarity(title, $1) DESC LIMIT 5;";
+        let q = "SELECT title, author, book_path, description, download_count,chat_id, language, genre FROM books WHERE title ILIKE '%' || $1 || '%' ORDER BY similarity(title, $1) DESC LIMIT 5;";
         let mut rows = sqlx::query(q).bind(name).fetch(&pool);
 
         while let Some(row) = rows.try_next().await? {
@@ -67,11 +66,10 @@ impl DB {
         Ok(books)
     }
 
-    // NOTE this is used on Command::start
     //TODO: write promote user function(takes my id, and other users id)
     pub async fn get_top_five(pool: &sqlx::PgPool) -> anyhow::Result<Vec<Book>> {
         let mut books = Vec::with_capacity(5);
-        let q = "SELECT title, author, book_path, description, download_count, language, genre FROM books ORDER BY download_count DESC LIMIT 5;";
+        let q = "SELECT title, author, book_path, description, download_count,chat_id, language, genre FROM books ORDER BY download_count DESC LIMIT 5;";
         let mut rows = sqlx::query(q).fetch(pool);
         while let Some(row) = rows.try_next().await? {
             match Book::row_book(row).await {
@@ -84,7 +82,44 @@ impl DB {
 
         Ok(books)
     }
+    
+    pub async fn get_users_books(chat_id: i64) -> anyhow::Result<Vec<Book>> {
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let pool = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect  to db");
 
+        let mut books:Vec<Book> = Vec::new();
+        let q = "SELECT title, author, book_path, description,download_count, language, genre, chat_id FROM books WHERE chat_id = $1";
+        let mut rows = sqlx::query(q).bind(chat_id).fetch(&pool);
+        while let Some(row)  = rows.try_next().await? {
+            match Book::row_book(row).await {
+                Ok(book) => books.push(book),
+                Err(err) => {
+                    log::error!("{:?}", err)
+                }
+            }     
+        }
+        Ok(books)
+    }
+
+    pub async fn delete_book(path: &String, chat_id: i64) -> anyhow::Result<()> {
+        let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
+        let pool = sqlx::postgres::PgPool::connect(&db_url)
+            .await
+            .expect("Couldn't connect  to db");
+
+        let q = "DELETE FROM books WHERE chat_id = $1 AND book_path = $2";
+        sqlx::query(q)
+            .bind(chat_id)
+            .bind(path)
+            .execute(&pool)
+            .await?;
+        Ok(())
+    }
+    
+
+    // TODO: write a function that takes in chat_id and book_title and delete them where they're are the same
     pub async fn get_book_path(exact_name: &str) -> anyhow::Result<String> {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let connection = sqlx::postgres::PgPool::connect(&db_url)

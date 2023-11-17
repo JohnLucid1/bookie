@@ -18,13 +18,14 @@ pub enum State {
     UploadBook,
     SearchBook,
     ReceiveBookChoice,
+    // DeleteBook,
+    ReceiveBookDelete,
 }
 
 const BOOKS_DIR_PATH: &str = "./books/";
 impl State {
     pub async fn upload_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
         let amount = DB::get_amount_books(msg.chat.id.0).await.unwrap();
-
         if amount < 5 {
             match msg.document() {
                 Some(document) => {
@@ -60,7 +61,7 @@ impl State {
                                 dialogue.update(State::Start).await?;
                             }
                         },
-                        Err(err) => {
+                        Err(_) => {
                             // Remove file if coundn't downlaod data
                             match fs::remove_file(&combined_path) {
                                 Ok(_) => {
@@ -68,11 +69,8 @@ impl State {
                                         "Removed file: {}",
                                         &combined_path.to_str().unwrap()
                                     );
-                                    bot.send_message(
-                                        msg.chat.id,
-                                        format!("Error downlaoding the file: {}", err),
-                                    )
-                                    .await?;
+                                    bot.send_message(msg.chat.id, "Error downlaoding the file :(")
+                                        .await?;
                                     dialogue.update(State::Start).await?;
                                 }
                                 Err(err) => {
@@ -98,7 +96,6 @@ impl State {
             .await?;
             dialogue.update(State::Start).await?;
         }
-
         Ok(())
     }
 
@@ -153,6 +150,43 @@ pub async fn receive_book_choice(
                 dialogue.exit().await?;
             }
         }
+    }
+    Ok(())
+}
+
+pub async fn receive_book_delete(
+    bot: Bot,
+    dialogue: MyDialogue,
+    q: CallbackQuery,
+) -> HandlerResult {
+    if let Some(book_path) = &q.data {
+        let chat_id = dialogue.chat_id().0;
+        match DB::delete_book(book_path, chat_id).await {
+            Ok(()) => {
+                // TODO: handle deleting file
+                match fs::remove_file(&book_path) {
+                    Ok(res) => {
+                        log::info!("Successfully remove file\n {:?}, {}", res, &book_path);
+                        bot.send_message(dialogue.chat_id(), "Successfully removed your book")
+                            .await?;
+                        dialogue.exit().await?;
+                    }
+                    Err(err) => {
+                        log::error!("Error remove book: {},\nERROR:{:?}", book_path, err);
+                        bot.send_message(dialogue.chat_id(), "Error removing file :(")
+                            .await?;
+                        dialogue.exit().await?;
+                    }
+                }
+            }
+            Err(err) => {
+                log::error!("ERROR deleting book from db: {:#?}", err);
+                bot.send_message(dialogue.chat_id(), "ERROR deleting book from db :(")
+                    .await?;
+                dialogue.update(State::Start).await?;
+            }
+        }
+        // TODO: write a delete file function
     }
     Ok(())
 }

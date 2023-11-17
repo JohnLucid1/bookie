@@ -15,6 +15,7 @@ pub struct Book {
     pub download_count: i32,
     pub language: String,
     pub genres: Vec<String>,
+    pub chat_id: i32
 }
 
 impl Book {
@@ -27,6 +28,7 @@ impl Book {
             download_count: row.try_get("download_count")?,
             language: row.try_get("language")?,
             genres: row.try_get("genre")?,
+            chat_id: row.try_get("chat_id")?,
         };
 
         anyhow::Ok(book)
@@ -40,7 +42,6 @@ impl FileType {
         if let Some(os_exstension) = path.extension() {
             let extension = os_exstension.to_str().unwrap_or("");
             match extension {
-                // TODO: change to include the user_id
                 "epub" => {
                     let new_book = FileType::parse_epub(path).expect("Couldn't parse epub");
                     DB::create_book(&new_book, chat_id).await
@@ -73,6 +74,7 @@ impl FileType {
             title,
             author,
             book_path,
+            chat_id: 0,
             description,
             download_count: 0,
             language,
