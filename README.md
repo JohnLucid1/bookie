@@ -1,1 +1,1 @@
-Cool telegram bot about books :)
+Cool telegram bot for uploading and downloading books ;) 
