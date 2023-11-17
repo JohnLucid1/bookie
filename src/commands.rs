@@ -1,9 +1,11 @@
 use teloxide::{
+    dispatching::dialogue,
+    dptree::di,
     payloads::SendMessageSetters,
     requests::Requester,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, Message},
-    utils::command::{BotCommands, self},
-    Bot, dptree::di,
+    utils::command::{self, BotCommands},
+    Bot,
 };
 
 use crate::dbs::{db::DB, users::Usr};
@@ -27,9 +29,11 @@ pub enum Command {
     #[command(description = "Uploading a book is for admins only.")]
     UploadBook,
     #[command(description = "Get top 5 downloaded books.")]
-    TopFive, 
+    TopFive,
     #[command(description = "Choose one of your books to delete")]
-    DeleteBook
+    DeleteBook,
+    #[command(description = "Get all of your books.")]
+    MyBooks,
 }
 
 impl Command {
@@ -45,9 +49,7 @@ impl Command {
                 } else {
                     let books = books
                         .into_iter()
-                        .map(|book| {
-                            InlineKeyboardButton::callback(book.title.clone(), book.title)
-                        }); 
+                        .map(|book| InlineKeyboardButton::callback(book.title.clone(), book.title));
                     bot.send_message(msg.chat.id, "Select a book:")
                         .reply_markup(InlineKeyboardMarkup::new([books]))
                         .await?;
@@ -106,9 +108,28 @@ impl Command {
         Ok(())
     }
 
+    pub async fn my_books(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
+        let books = DB::get_users_books(msg.chat.id.0).await?;
+        if books.is_empty() {
+            bot.send_message(msg.chat.id, "You have no books to select from :(")
+                .await?;
+            dialogue.update(State::Start).await?;
+        } else {
+            let books = books
+                .into_iter()
+                .map(|book| InlineKeyboardButton::callback(book.title.clone(), book.title));
+
+            bot.send_message(msg.chat.id, "Select a book:")
+                .reply_markup(InlineKeyboardMarkup::new([books]))
+                .await?;
+            dialogue.update(State::ReceiveBookChoice).await?;
+        }
+        Ok(())
+    }
+
     pub async fn delete_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
         // bot.send_message(msg.chat.id, "Select a book to delete:").await?;
-        // dialogue.update(State::DeleteBook).await?;  
+        // dialogue.update(State::DeleteBook).await?;
         // TODO: rework so this function gets all books makes keyboard and so on
         // Call callback from here
         // create the keyboard, get result and then delete from db and the file
@@ -129,8 +150,7 @@ impl Command {
             dialogue.update(State::ReceiveBookDelete).await?;
         }
         Ok(())
-    }    
-    
+    }
 
     pub async fn search_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
         bot.send_message(msg.chat.id, "Enter a book's name").await?;

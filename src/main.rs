@@ -48,7 +48,8 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
                 .branch(case![Command::SearchBook].endpoint(Command::search_book))
                 .branch(case![Command::UploadBook].endpoint(Command::upload_book)) 
                 .branch(case![Command::TopFive].endpoint(Command::get_top_five))
-                .branch(case![Command::DeleteBook].endpoint(Command::delete_book)),
+                .branch(case![Command::DeleteBook].endpoint(Command::delete_book))
+                .branch(case![Command::MyBooks].endpoint(Command::my_books)),
         )
         .branch(case![Command::Cancel].endpoint(Command::cancel));
 
