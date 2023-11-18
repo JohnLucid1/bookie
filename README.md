@@ -55,5 +55,6 @@ Get all of your books. Retrieve a list of all the books you have shared.
 
 - A simple user can only upload 5 books
 - Ensure the book is in the .epub format before uploading.
+- To run this app create .env file with postgresql-url and telegram bot token 
 
 Feel free to explore and enjoy sharing and downloading books through this Telegram bot! If you encounter any issues or have questions, use the /help command for assistance.
