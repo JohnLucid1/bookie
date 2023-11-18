@@ -18,7 +18,6 @@ pub enum State {
     UploadBook,
     SearchBook,
     ReceiveBookChoice,
-    // DeleteBook,
     ReceiveBookDelete,
 }
 

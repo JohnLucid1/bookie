@@ -1,7 +1,10 @@
 /target
 *.epub
+/books
+/my_rust_app
 
 .env
 init.sql
 /.vscode
+Dockerfile
 docker-compose.yml

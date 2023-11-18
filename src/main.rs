@@ -5,8 +5,6 @@ mod state;
 mod tests;
 mod users;
 
-// NOTE: app pipeline, comamnd start->create new user->then so on
-//TODO: write good tests that actually test something
 use commands::Command;
 use dotenv::dotenv;
 use state::State;

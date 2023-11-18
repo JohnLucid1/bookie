@@ -69,7 +69,6 @@ impl Command {
         let connection = sqlx::postgres::PgPool::connect(&db_url)
             .await
             .expect("Couldn't connect  to db");
-
         let new_user = User::new(msg.chat.id.0);
         match Usr::create_new_user(&connection, &new_user).await {
             Ok(()) => {
