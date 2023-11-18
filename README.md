@@ -40,13 +40,13 @@ Get all of your books. Retrieve a list of all the books you have shared.
    - Use /searchbook followed by the book's name to search for a specific book.
 
 4. **Admin Upload:**
-   - Admins can use /uploadbook to upload books for sharing.
+   - Use to upload your books
 
 5. **Top 5 Downloaded Books:**
    - Use /topfive to get a list of the top 5 most downloaded books.
 
 6. **Delete a Book:**
-   - Admins can use /deletebook to choose and delete a book from the shared collection.
+   - Use to delete one of your books 
 
 7. **List Your Books:**
    - Use /mybooks to get a list of all the books you have shared.
