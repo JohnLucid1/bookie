@@ -8,8 +8,6 @@ use teloxide::{
     Bot,
 };
 use tokio::fs::File;
-// TODO: refactor upload book
-// TODO: Impliment deleting books
 
 #[derive(Clone, Default)]
 pub enum State {
@@ -28,7 +26,7 @@ impl State {
         if amount < 5 {
             match msg.document() {
                 Some(document) => {
-                    let name = document.file_name.clone(); // TODO: refactor this bullshit
+                    let name = document.file_name.clone();
                     if name.is_none() {
                         log::error!("Document has no filename :(");
                         bot.send_message(msg.chat.id, "Cannot get the name of the book :(")

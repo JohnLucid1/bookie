@@ -125,11 +125,6 @@ impl Command {
     }
 
     pub async fn delete_book(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
-        // bot.send_message(msg.chat.id, "Select a book to delete:").await?;
-        // dialogue.update(State::DeleteBook).await?;
-        // TODO: rework so this function gets all books makes keyboard and so on
-        // Call callback from here
-        // create the keyboard, get result and then delete from db and the file
         let user_id = msg.chat.id.0;
         let user_books = DB::get_users_books(user_id).await?;
         if user_books.is_empty() {

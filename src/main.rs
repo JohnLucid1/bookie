@@ -25,8 +25,6 @@ async fn main() {
     log::info!("Starting bot :)");
     let bot_token = std::env::var("TELOXIDE_TOKEN").expect("Couldn't get token from .env file");
     let bot = Bot::new(bot_token);
-    // TODO: test db connection (if db not found panic)
-
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
         .enable_ctrlc_handler()
@@ -55,7 +53,6 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
         .branch(command_handler) //NOTE: This acts upon the state
         .branch(case![State::SearchBook].endpoint(State::searching_book))
         .branch(case![State::UploadBook].endpoint(State::upload_book))
-        // .branch(case![State::DeleteBook].endpoint(State::delete_book))
         .branch(dptree::endpoint(invalid_state));
 
     let callback_query_handler = Update::filter_callback_query()

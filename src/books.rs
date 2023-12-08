@@ -2,8 +2,6 @@ use anyhow::anyhow;
 use epub::doc::{DocError, EpubDoc};
 use sqlx::{postgres::PgRow, Row};
 use std::{fs::File, io::BufReader, path::Path};
-// TODO: implement parse_fb2
-// TODO: Refactor all this sheet
 
 use crate::dbs::db::DB;
 #[derive(Debug)]
@@ -46,7 +44,7 @@ impl FileType {
                     let new_book = FileType::parse_epub(path).expect("Couldn't parse epub");
                     DB::create_book(&new_book, chat_id).await
                 }
-                _ => Err(anyhow!("ERRORRRR")),
+                _ => Err(anyhow!("Only parsing epub format :(")),
             }
         } else {
             Err(anyhow!("Couln't get file extension"))

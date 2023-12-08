@@ -66,7 +66,6 @@ impl DB {
         Ok(books)
     }
 
-    //TODO: write promote user function(takes my id, and other users id)
     pub async fn get_top_five(pool: &sqlx::PgPool) -> anyhow::Result<Vec<Book>> {
         let mut books = Vec::with_capacity(5);
         let q = "SELECT title, author, book_path, description, download_count,chat_id, language, genre FROM books ORDER BY download_count DESC LIMIT 5;";
@@ -118,7 +117,6 @@ impl DB {
         Ok(())
     }
 
-    // TODO: write a function that takes in chat_id and book_title and delete them where they're are the same
     pub async fn get_book_path(exact_name: &str) -> anyhow::Result<String> {
         let db_url = std::env::var("DB_URL").expect("Coudln't get url from .env file");
         let connection = sqlx::postgres::PgPool::connect(&db_url)
